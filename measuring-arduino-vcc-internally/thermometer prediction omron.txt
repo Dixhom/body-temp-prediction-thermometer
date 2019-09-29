@@ -1,0 +1,52 @@
+
+
+Here's the code to measure the supply voltage.
+
+```
+long readVcc() {
+  long result;
+  // Read 1.1V reference against AVcc
+  ADMUX = _BV(REFS0) | _BV(MUX3) | _BV(MUX2) | _BV(MUX1);
+  delay(2); // Wait for Vref to settle
+  ADCSRA |= _BV(ADSC); // Convert
+  while (bit_is_set(ADCSRA,ADSC));
+  result = ADCL;
+  result |= ADCH<<8;
+  result = 1126400L / result; // Back-calculate AVcc in mV
+  return result;
+}
+```
+
+What does this do? It's literally reading "1.1V reference against AVcc". My interpretation is:
+
+1. Set reference voltage (Vref) to an external voltage input by `_BV(REFS0)`. In this case, 5V (AVcc)
+2. Select the analog input channel 1110 which leads to the internal reference voltage 1.1V (Vin) by `_BV(MUX3) | _BV(MUX2) | _BV(MUX1)`.
+3. Set bit6(=ADSC) of ADCSRA to initiate an AD conversion by `ADCSRA |= _BV(ADSC)`.
+4. Wait until the bit is 0, which means the conversion finished by `while (bit_is_set(ADCSRA,ADSC))`.
+5. Get 10bit ADC counts by concatinating the lower bits and higher bits by `result = ADCL;`, `result |= ADCH<<8;`.
+6. Get AVcc in mV by 1024 * Vin / ADCcounts by `result = 1126400L / result`  
+The equation is $Vin = AVcc * ADCcounts / 1024$.
+
+The original answer adopted the value 1125300L = 1023 * 1.1. In my opinion it should be 1024 since the ADC saturates one count before Vref. However, it's trivial since Vin is not exactly 1.1V so you need to change the magic number according to your Arduino.
+
+
+ 
+resistor resistance : 9.81 kohm
+
+2018-3-25 12:40 : 36.6
+
+
+
+
+https://www.google.com/patents/WO2011036884A1?cl=en&hl=ja
+
+Newton's law of cooling
+
+Newton's law of cooling states that the rate of heat loss of a body is directly proportional to the difference in the temperatures between the body and its surroundings provided the temperature difference is small and the nature of radiating surface remains same.
+
+dT/dt = -r(T-Tenv)
+
+
+
+
+[Arduino‚Å‘Ì‰·Œv‚ð‚Â‚­‚é - naritakufs diary](http://naritaku.hatenablog.com/entry/2016/04/05/230649)

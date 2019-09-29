@@ -1,0 +1,196 @@
+a <- 0.1
+b <- 10
+x <- seq(0, 30, 1)
+y <- b * exp(a*x) + rnorm(length(x), 0,1)
+
+gradient.descent <- function(x, y, learn_rate, conv_threshold, max_iter) {
+  plot(x,y)
+  par(new=T)
+
+  a <- 1
+  b <- 1
+  a.new <- 1
+  b.new <- 1
+  n <- length(x)
+  iter <- 0
+  converged = F
+  
+  f <- function(x,a,b) {b*exp(a*x)}
+  yhat <- f(x,a,b)
+  mse <- sum((y - yhat) ^ 2) / n
+  
+  logit <- function(x) 1/(1+exp(-x))
+
+  pardiff.a <- function(a,b,x,y) {sum(2*(y-b*exp(a*x))*(y-b*x*exp(a*x)))/n}
+  pardiff.b <- function(a,b,x,y) {sum(-2*(y-b*exp(a*x))*exp(a*x))/n}
+  
+  while(converged == F) {
+    iter = iter + 1
+    cat(paste(">>", iter, "\n"))
+    cat(paste("pardiff.a:", pardiff.a(a,b,x,y), ", pardiff.b:", pardiff.b(a,b,x,y), "\n"))
+    
+    a.new <- a - learn_rate * logit(mse * pardiff.a(a,b,x,y))
+    b.new <- b - learn_rate * logit(mse * pardiff.b(a,b,x,y))
+    a <- a.new
+    b <- b.new
+    
+    yhat <- f(x, a, b)
+    mse.new <- sum((y - yhat) ^ 2) / n
+    cat(paste0("a:", a, ", b:", b, ", mse:", mse, "->", mse.new, "\n\n"))
+    if(abs(mse - mse.new) <= conv_threshold || iter >= max_iter) {
+      curve(f(x,a,b), from=0, to=30)
+      converged = T
+      print(paste("optimal a:", a, ", optimal b:", b))
+      par(new=F)
+      return
+    }
+    mse <- mse.new
+  }
+}
+
+gradient.descent(x,y,0.001,0.001,100)
+
+
+
+
+
+
+
+
+
+f <- function(x,a,b) { b*exp(a*x) }
+xx <- seq(0, 30, 1)
+a.init <- 0.1
+b.init <- 1
+yy <- f(xx, a.init, b.init) + rnorm(length(xx), 0, 1)
+
+a <- seq(-10, 10, length = 100)
+b <- a
+mse <- function(a,b,xx,yy) {sum((yy - f(xx,a,b)) ^ 2) / length(yy)}
+z <- sapply(b, function(bi) sapply(a, function(ai) mse(ai,bi,xx,yy)))
+
+rgl.bg(color=c("white", "black"))
+rgl.light(theta = 5, phi = 5)
+# zlim <- range(z)
+# zlen <- zlim[2] - zlim[1] + 1
+# colorlut <- rainbow(zlen)              # プロットの色を指定する：関数 rainbow() の他に
+# col <- colorlut[ z-zlim[1]+1 ]         # heat.colors(), terrain.colors(), topo.colors(),
+# terrain3d(a, b, z, color=col)          # cm.colors() などが有用である
+terrain3d(a, b, z)
+
+#----------------------------------------
+
+library(rgl)
+
+f <- function(x,a,b) { b*a }
+xx <- seq(0, 30, 1)
+a.init <- 0.1
+b.init <- 1
+yy <- f(xx, a.init, b.init) + rnorm(length(xx), 0, 1)
+
+a <- seq(-10, 10, length = 100)
+b <- a
+mse <- function(a,b,xx,yy) {sum((yy - f(xx,a,b)) ^ 2) / length(yy)}
+z <- sapply(b, function(bi) sapply(a, function(ai) mse(ai,bi,xx,yy)))
+
+rgl.bg(color=c("white", "black"))
+rgl.light(theta = 5, phi = 5)
+# zlim <- range(z)
+# zlen <- zlim[2] - zlim[1] + 1
+# colorlut <- rainbow(zlen)              # プロットの色を指定する：関数 rainbow() の他に
+# col <- colorlut[ z-zlim[1]+1 ]         # heat.colors(), terrain.colors(), topo.colors(),
+# terrain3d(a, b, z, color=col)          # cm.colors() などが有用である
+surface3d(a, b, z)
+
+#----------------------------------------
+
+ta <- 20.1
+tb <- 43.28
+f <- function(t, ta, tb, k) tb + (ta-tb)*exp(k*t)
+t <- seq(0, 100, 1)
+k <- -0.111
+temp <- f(t,ta,tb,k) + rnorm(length(t),0,0.5)
+
+plot(t, temp, xlim=c(0,100), ylim=c(20,60))
+
+mse <- function(t, temp, ta, tb, k) sum((temp - f(t,ta,tb,k))^2)/length(t)
+dmsetb <- function(tb,k,ta,t,temp) sum(2*(temp - tb - (ta-tb)*exp(k*t)) * (-1+exp(k*t)))/length(t)
+dmsek <- function(tb,k,ta,t,temp) sum(2*(temp - tb - (ta-tb)*exp(k*t)) * (-(ta-tb)*t*exp(k*t)))/length(t)
+
+gradient.descent <- function(t, temp, ta, learn_rate, conv_threshold, max_iter) {
+  plot(t, temp, xlim=c(0,100), ylim=c(20,60))
+  par(new=T)
+  
+  tb <- tb.new <- 40
+  k <- k.new <- -0.7
+  m <- m.new <- mse(t, temp, ta, tb, k)
+  iter <- 0
+  converged = F
+  
+  lg1 <- function(x) sign(x)*log(abs(x)+1)
+  
+  while(converged == F) {
+    iter = iter + 1
+    gradtb <- dmsetb(tb,k,ta,t,temp)
+    gradk <- dmsek(tb,k,ta,t,temp)
+    
+    cat(sprintf("<%d> tb:%f, k:%f, d(mse)/d(tb):%f, d(mse)/d(k):%f, MSE:%f\n", 
+                iter, tb, k, gradtb, gradk, m))
+    
+    tb.new <- tb - learn_rate * gradtb /iter
+    k.new <- k - learn_rate * gradk /iter
+    tb <- tb.new
+    k <- k.new
+    m.new <- mse(t, temp, ta, tb, k)
+
+    if(abs(m - m.new) <= conv_threshold || iter >= max_iter) {
+      curve(f(x, ta, tb, k), from=min(t), to=max(t), ylim=c(20,60))
+      converged = T
+      cat("\n>>> Converged! <<<\n\n")
+      cat(sprintf("<Result> tb:%f, k:%f, d(mse)/d(tb):%f, d(mse)/d(k):%f, MSE:%f\n", 
+                  tb, k, gradtb, gradk, m.new))
+      par(new=F)
+      return
+    }
+    m <- m.new
+  }
+}
+
+gradient.descent(t, temp, ta, 0.03, 0.0001, 10000)
+# tb:41.109802, k:-10.149506, MSE:17.724855
+# tb <- 43.28
+
+#--------------------------------------
+
+library(rgl)
+
+tb <- seq(-30, 60, length = 100)
+k <- -1*10^seq(-2, 1, length=150)
+z <- sapply(tb, function(tbi) sapply(k, function(ki) mse(t, temp, ta, tbi, ki)))
+
+rgl.bg(color=c("white", "black"))
+rgl.light(theta = 5, phi = 5)
+surface3d(k, tb, log(z), col="gray")
+
+
+k <- -0.111
+tb <- seq(-30, 60, length = 100)
+plot(tb, sapply(tb,function(tbi) mse(t, temp, ta, tbi, k)), type="l")
+# steep curve
+
+k <- -1*10^seq(-2, 1, length=150)
+tb <- 43.28
+plot(k, sapply(k,function(ki) mse(t, temp, ta, tb, ki)), type="l")
+# shallow curve for big k
+
+tb <- seq(-30, 60, length = 100)
+for(ki in c(1e-3, 1e-2, 0.1, 1, 10)){
+  tb <- seq(-30, 60, length = 100)
+  plot(tb, sapply(tb,function(tbi) mse(t, temp, ta, tbi, k)), type="l")
+  par(new=T)
+}
+par(new=F)
+# identical plots
+
+
+plot(function(x) sign(x)*log(abs(x)+1), xlim=c(-10,10))

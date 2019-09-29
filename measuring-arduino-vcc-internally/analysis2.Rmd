@@ -1,0 +1,83 @@
+---
+title: "measuring arduino vcc internally""
+output:
+  html_document:
+    df_print: paged
+  pdf_document: default
+---
+
+The supply voltage was measured by the following code.
+
+```
+long readVcc() {
+  long result;
+  // Read 1.1V reference against AVcc
+  ADMUX = _BV(REFS0) | _BV(MUX3) | _BV(MUX2) | _BV(MUX1);
+  delay(2); // Wait for Vref to settle
+  ADCSRA |= _BV(ADSC); // Convert
+  while (bit_is_set(ADCSRA,ADSC));
+  result = ADCL;
+  result |= ADCH<<8;
+  result = 1126400L / result; // Back-calculate AVcc in mV
+  return result;
+}
+
+void setup() {
+    Serial.begin(9600);
+
+}
+
+// the loop function runs over and over again forever
+void loop() {
+    Serial.print(millis());
+    Serial.print(",");
+    Serial.println(readVcc());
+    delay(1000);
+}
+```
+
+This is from an answer in the post below.
+
+[analogread - How to measure the supply voltage of Arduino without using an analog pin - Arduino Stack Exchange](https://arduino.stackexchange.com/a/50771/43776)
+
+The results of `Serial.print()` was copied to `vcc.txt` and analysed as follows.
+
+```{r}
+dat <- read.table("vcc.txt", sep=":")
+vcc <- data.frame(t=dat$V1/1000, v=dat$V2/1000)
+library(ggplot2)
+  qplot(vcc$t, vcc$v) +
+  geom_point() +
+  ylim(4, 5) +
+  xlab("time [s]") +
+  ylab("AVcc [V]")
+
+```
+
+The mean voltage was `r mean(vcc$v)` [V]. 4.501 [V]. The voltage measured by a digital multimeter was 4.49 [V] so the magic number was corrected as $1024 * 1.1 * 4.49 / 4.501 = 1124$. 
+
+AVcc was measured and analysed again in the same manner. The result is in `vcc1124.txt`.
+
+```{r}
+dat <- read.csv("vcc1124.txt", header=F)
+vcc <- data.frame(t=dat$V1/1000, v=dat$V2/1000)
+library(ggplot2)
+qplot(vcc$t, vcc$v) +
+  geom_point() +
+  ylim(4, 5) +
+  xlab("time [s]") +
+  ylab("AVcc [V]")
+
+```
+
+```{r}
+ggplot(vcc, aes(x = v)) +
+  geom_histogram()
+```
+
+AVcc was `r mean(vcc$v)` +/- `r sd(vcc$v)` [V].
+
+
+
+
+
